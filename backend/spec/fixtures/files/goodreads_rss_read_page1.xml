@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Jane's bookshelf: read</title>
+    <link>https://www.goodreads.com/review/list/1001?shelf=read</link>
+    <description>Jane's bookshelf: read</description>
+    <item>
+      <title>Dune</title>
+      <link>https://www.goodreads.com/review/show/1?utm_medium=api</link>
+      <book_id>234225</book_id>
+      <book_image_url>https://i.gr-assets.com/images/S/compressed.photo/dune_small.jpg</book_image_url>
+      <book_small_image_url>https://i.gr-assets.com/images/S/compressed.photo/dune_small.jpg</book_small_image_url>
+      <book_medium_image_url>https://i.gr-assets.com/images/S/compressed.photo/dune_medium.jpg</book_medium_image_url>
+      <book_large_image_url>https://i.gr-assets.com/images/S/compressed.photo/dune_large.jpg</book_large_image_url>
+      <book id="234225"><num_pages>604</num_pages></book>
+      <author_name>Frank Herbert</author_name>
+      <isbn>0441172717</isbn>
+      <user_name>Jane</user_name>
+      <user_rating>5</user_rating>
+      <user_read_at><![CDATA[Tue, 14 Mar 2023 00:00:00 -0700]]></user_read_at>
+      <user_date_added><![CDATA[Sun, 01 Jan 2023 10:22:31 -0800]]></user_date_added>
+      <user_shelves>sci-fi, favorites</user_shelves>
+      <average_rating>4.27</average_rating>
+      <book_published>1965</book_published>
+    </item>
+    <item>
+      <title>Obscure Pamphlet</title>
+      <book_id>999001</book_id>
+      <book_large_image_url>https://s.gr-assets.com/assets/nophoto/book/111x148-bcc042a9c91a29c1d680899eff700a03.png</book_large_image_url>
+      <book id="999001"><num_pages></num_pages></book>
+      <author_name>Anon</author_name>
+      <isbn></isbn>
+      <user_rating>0</user_rating>
+      <user_read_at></user_read_at>
+      <user_date_added><![CDATA[Mon, 05 Jun 2023 08:00:00 +0000]]></user_date_added>
+      <user_shelves></user_shelves>
+      <average_rating>0.00</average_rating>
+      <book_published></book_published>
+    </item>
+  </channel>
+</rss>

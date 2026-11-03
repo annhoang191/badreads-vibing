@@ -56,4 +56,16 @@ class ApiError < StandardError
       super(message, code: "invalid_goodreads_export", status: :unprocessable_content, **opts)
     end
   end
+
+  class ProfileNotPublic < ApiError
+    def initialize(message = "This Goodreads profile was not found or is not public", **opts)
+      super(message, code: "profile_not_public", status: :unprocessable_content, **opts)
+    end
+  end
+
+  class NoGoodreadsProfile < ApiError
+    def initialize(message = "Connect a Goodreads profile first", **opts)
+      super(message, code: "no_goodreads_profile", status: :unprocessable_content, **opts)
+    end
+  end
 end
