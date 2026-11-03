@@ -45,10 +45,26 @@ Run from the repo root unless noted.
 - CORS origins come from `FRONTEND_ORIGINS` (default `http://localhost:5173`), see `config/initializers/cors.rb`.
 
 ## LLM usage
-- Use the official `anthropic` gem, default model `claude-sonnet-5-5`. The model is set in `config/llm.yml`.
-- Prompts live in `app/prompts/*.md.erb` and are versioned (`PROMPT_VERSION`). Bump the version when a prompt changes.
-- Request JSON output and parse strictly. On a parse or validation failure, retry once, then mark the batch failed.
-- Log token usage on `recommendation_batches`.
+Architecture and contracts are in `SPEC.md` §4.4. Rules for working on it:
+- Use the official `anthropic` gem. An orchestrator agent (`Agents::RecommendationOrchestrator`,
+  beta Tool Runner, `Anthropic::BaseTool` subclasses) delegates to stateless subagents in `app/agents/subagents/`.
+- **Model tiers:** `simple` = `claude-haiku-5-5`, `orchestrator` = `claude-sonnet-5-5`,
+  `complex` = `claude-opus-5-5`. Never hard-code a model ID. Resolve it via `Llm::Router.for(:task)`,
+  which reads the task→tier allowlist in `config/llm.yml`.
+- **Opus is only for `rank_candidates`.** Default every new task to `simple`. Moving a task up a tier needs
+  a SPEC change and eval evidence.
+- **API gotchas for these models:**
+  - Opus 5.5 and Sonnet 5.5 reject forced `tool_choice` (`any`/`tool`). Use `auto` with `strict: true` tools.
+  - Thinking can't be disabled on Opus 5.5; set `output_config.effort` explicitly (Opus defaults to `medium`).
+  - No assistant prefill. Use `output_config.format` for JSON.
+  - Check `stop_reason` (including `refusal`) before reading `content`.
+- Sonnet and Opus calls send `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`). Haiku has no server-side fallback.
+- Validate every model output in Ruby. Agent guardrails (turns, task budget, per-tool call caps,
+  wall-clock limit) fall back to the heuristic ranking. They never raise to the user.
+- Keep system prompts and tool definitions byte-stable so the prompt cache works. Per-user data goes in messages only.
+- Prompts live in `app/prompts/<task>.md.erb` and are versioned (`PROMPT_VERSION`). Bump the version when a prompt changes.
+- Every model call writes an `llm_calls` row (task, tier, model, tokens, cost, latency, stop_reason).
+- Specs stub the Anthropic client. Tests never call a real model.
 
 ## Frontend conventions
 - Vue 3 `<script setup lang="ts">`, Composition API only. No Options API.

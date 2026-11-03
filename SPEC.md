@@ -184,15 +184,71 @@ pre_score = 0.55 * subject_overlap      (sum of matched subject affinities, capp
 ```
 Keep the top 40. On its own this ordering is the **fallback** ranking (FR-C7). Fallback reasons come from a template: "Shares *{subject}* and *{subject}* with books you rated highly, like *{anchor}*."
 
-**Step 4: LLM ranking (Claude).**
-- *Input:* the profile summary (stats, anchors and anti-anchors given as title + author + rating only) and 40 candidates as `{ id, title, author, year, subjects[≤8], pages }`. `id` is a short opaque reference like `c17`.
-- *Instruction:* choose the 10 best fits, give each a score from 0–100 and a reason that refers to the user's actual books or patterns, prefer variety (≤ 2 per author, ≤ 4 that share a top subject), and never output an id that isn't in the list.
-- *Output (strict JSON):* `{ "recommendations": [ { "id": "c17", "score": 92, "reason": "..." } ] }`
-- *Validation:* exactly 10 unique, known ids; score is an int from 0–100; the reason is non-empty and ≤ 300 characters. One retry with the validation errors appended, then fall back to the heuristic.
-- *Never sent:* email, user id, reviews, private notes, custom shelf names.
-- Record `model`, `prompt_version`, `input_tokens`, `output_tokens`, `ranked_by` on the batch.
+**Step 4: Agentic ranking.** The orchestrator agent (§4.4) receives the profile and the pre-scored candidates. It may widen the pool through its tools, then delegates the final ranking to the complex-tier subagent. Its output must satisfy:
+- *Output:* `{ "recommendations": [ { "id": "c17", "score": 92, "reason": "..." } ] }`, where `id` is the opaque candidate reference (e.g. `c17`) the tools handed out.
+- *Validation (in Ruby, never trusted to the model):* exactly 10 unique, known ids; score is an int from 0–100; the reason is non-empty and ≤ 300 characters; ≤ 2 per author.
+- On a validation failure: one retry with the errors appended, then the heuristic fallback (FR-C7).
 
 **Step 5: Persist.** Upsert candidate works into `books` (with `goodreads_book_id` nil, `source: open_library`), then create the `recommendations` rows.
+
+### 4.4 LLM agent architecture
+
+Recommendations are produced by an **orchestrator agent** that plans the work and delegates to **subagents**, each pinned to the cheapest model tier that can do its job. **Opus 5.5 is reserved for the one genuinely hard step: taste reasoning over the final shortlist.**
+
+```
+GenerateRecommendationsJob
+  └─ Agents::RecommendationOrchestrator        (orchestrator tier · Sonnet 5.5)
+       ├─ get_reading_profile        tool  → Analytics::ReadingProfile         (no LLM)
+       ├─ search_candidates          tool  → Recommendations::CandidateGenerator (no LLM)
+       ├─ expand_queries             subagent  (simple tier · Haiku 5.5)
+       ├─ classify_subjects          subagent  (simple tier · Haiku 5.5)
+       ├─ summarize_reader           subagent  (simple tier · Haiku 5.5)
+       ├─ rank_candidates            subagent  (complex tier · Opus 5.5)
+       └─ submit_recommendations     tool  → validates + ends the run           (no LLM)
+```
+
+**Model tiers.** Defined in `config/llm.yml` and resolved only through `Llm::Router.for(task)`. Prices are per 1M tokens, input/output.
+
+| Tier | Model | Effort | Price | Used for |
+|---|---|---|---|---|
+| `simple` | `claude-haiku-5-5` | `low` | $0.10 / $0.50 | Short, well-specified transforms: tagging, summarizing, query expansion |
+| `orchestrator` | `claude-sonnet-5-5` | `medium` | $2 / $10 | Planning, choosing tools, deciding when the pool is good enough |
+| `complex` | `claude-opus-5-5` | `high` | $4 / $20 | Nuanced judgment across many items: ranking, explaining fit |
+
+- **Routing is an allowlist, not a choice the model makes.** Each task maps to exactly one tier in `config/llm.yml`. A spec asserts that only `rank_candidates` maps to `complex`. Promoting a task to Opus needs a spec change, with eval evidence that a cheaper tier isn't good enough.
+- **Subagents are stateless.** Each one is a single Messages API call with its own small system prompt and structured output (`output_config.format`). They return compact JSON, never a transcript, so the orchestrator's context stays small.
+
+**Agent and subagent contracts**
+
+| Name | Kind | Input | Output | Notes |
+|---|---|---|---|---|
+| `get_reading_profile` | tool | — | Profile from §4.3 step 1 | Read from the insights snapshot |
+| `search_candidates` | tool | `{ subjects?[], authors?[], queries?[], limit≤30 }` | `[{ id, title, author, year, subjects, pages, pre_score }]` | Applies the FR-C5 exclusions; issues opaque `id`s |
+| `expand_queries` | Haiku | Anchors and top subjects | `{ queries: [≤5 theme queries] }`, e.g. "found family", "unreliable narrator" | Widens the pool beyond literal subjects |
+| `classify_subjects` | Haiku | `[raw_subject]` | `{ raw → canonical \| null }` | Also called by `EnrichBooksJob`; results cached in `subject_mappings`, so each raw string is classified once ever |
+| `summarize_reader` | Haiku | Profile stats | `{ persona: ≤80 words, likes[], dislikes[] }` | Compact context for the ranker |
+| `rank_candidates` | **Opus** | Persona, anchors and anti-anchors, ≤ 40 candidates | `{ recommendations: [10 × {id, score, reason}] }` | Called **at most twice per batch** (initial attempt + one retry) |
+| `submit_recommendations` | tool | Ranker output | `ok` or validation errors | The only way the run can end successfully |
+
+**Orchestrator loop**
+- Built on the Ruby SDK's beta Tool Runner (`client.beta.messages.tool_runner`), with each tool and subagent as an `Anthropic::BaseTool` subclass whose `#call` runs the service or the subagent request. Tools use `strict: true`.
+- `tool_choice` stays `auto`. Forced tool choice returns a 400 on Sonnet 5.5 and Opus 5.5, so the system prompt names the expected sequence instead.
+- **Guardrails, enforced in Ruby:**
+  - ≤ 12 orchestrator turns.
+  - `task_budget` of 60k tokens.
+  - ≤ 3 `search_candidates` calls, ≤ 2 `rank_candidates` calls.
+  - 90 s wall-clock limit.
+  - Hitting any limit ends the run and uses the heuristic fallback (FR-C7).
+- **Prompt caching:** the orchestrator's system prompt and tool definitions are static and carry `cache_control`. Per-user data enters only in messages. Caches are per model, so each tier caches its own prompts.
+- **Refusals and errors:**
+  - Check `stop_reason` before reading `content` on every call.
+  - Sonnet and Opus requests enable the server-side `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`).
+  - Haiku has no server-side fallback. A refusal or error there makes that subagent return an error `tool_result`, so the orchestrator can carry on without it.
+  - SDK retries (default 2) cover 429/5xx.
+
+**Privacy (applies to every tier):** send only titles, authors, ratings, aggregate stats, and subjects. Never send email, user id, reviews, private notes, or custom shelf names.
+
+**Observability:** every model call writes an `llm_calls` row (§5). Each batch records `ranked_by` (`agent` or `heuristic`), total tokens and cost, and a cost breakdown per tier.
 
 ---
 
@@ -209,7 +265,9 @@ All tables have `id` (bigint) and `created_at`/`updated_at`. FKs are indexed and
 | `user_books` | user_id, book_id, exclusive_shelf, shelves (string[]), my_rating (1–5, null), date_read, date_added, read_count, review | unique(user_id, book_id); index(user_id, exclusive_shelf); check rating 1–5 |
 | `imports` | user_id, source (`csv`/`rss`), status (`pending`/`processing`/`completed`/`failed`), filename, stats (jsonb), error_message, started_at, finished_at | index(user_id, created_at) |
 | `reading_insights` | user_id, version, data (jsonb), computed_at | unique(user_id) |
-| `recommendation_batches` | user_id, status (`pending`/`processing`/`completed`/`failed`), ranked_by (`llm`/`heuristic`), model, prompt_version, input_tokens, output_tokens, error_message | index(user_id, created_at) |
+| `recommendation_batches` | user_id, status (`pending`/`processing`/`completed`/`failed`), ranked_by (`agent`/`heuristic`), prompt_version, total_cost_usd (decimal), cost_by_tier (jsonb), agent_turns, error_message | index(user_id, created_at) |
+| `llm_calls` | recommendation_batch_id (nullable), task (e.g. `rank_candidates`), tier, model, input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, cost_usd, latency_ms, stop_reason, error | index(batch_id); index(task, created_at) |
+| `subject_mappings` | raw_subject, canonical_subject (nullable = discard), source (`config`/`llm`) | unique(raw_subject) |
 | `recommendations` | recommendation_batch_id, user_id, book_id, position (1–10), score, reason, status (`new`/`saved`/`dismissed`) | unique(batch_id, book_id); index(user_id, status) |
 
 The CSV file itself is processed from a temporary Active Storage blob that is **deleted after processing**.
@@ -296,7 +354,7 @@ Example: a recommendation
 | Reliability | Jobs are idempotent and safe to retry. External HTTP has timeouts (connect 5 s, read 15 s). |
 | Security | bcrypt passwords; session tokens are random 32+ bytes; HTTPS only in production; CORS limited to `FRONTEND_ORIGINS`; params whitelisted; uploads validated by content, not just extension; Brakeman clean. |
 | Privacy | LLM payload limited as in §4.3. No third-party analytics in v1. Account deletion is complete (FR-A5). |
-| Cost | LLM spend tracked per batch. Target < $0.05 per batch. Alert if the daily total exceeds a configured cap. |
+| Cost | LLM spend tracked per call (`llm_calls`) and per batch. Target < $0.25 per batch: roughly $0.10 orchestrator + $0.10 Opus ranking + < $0.01 Haiku. Alert if the daily total exceeds a configured cap. |
 | Observability | Structured logs for every job (start, finish, duration, counts). Failed jobs visible in the Solid Queue tables. |
 | Testing | Request specs for every endpoint; unit specs for the parser, upserter, analytics, and ranker validation; external HTTP stubbed; frontend store and component tests for logic. |
 
@@ -310,7 +368,7 @@ Example: a recommendation
 | 2 | Auth | A user can register, log in, and log out from the UI; protected routes return 401 without a token; `DELETE /me` works |
 | 3 | CSV import | Uploading a real export shows progress, then stats; re-uploading is a no-op; the library page lists the books |
 | 4 | Enrichment + insights | Most books with ISBNs get subjects and covers; the dashboard renders every §4.1 metric with coverage notes |
-| 5 | Recommendations | 10 recommendations with reasons; none already shelved or dismissed; the fallback works when the LLM is stubbed to fail |
+| 5 | Recommendations | The orchestrator returns 10 recommendations with reasons, none already shelved or dismissed; only `rank_candidates` ever calls Opus; guardrails and the heuristic fallback are covered by specs with stubbed models; the cost per batch is logged |
 | 6 | RSS sync | Connecting a public profile syncs new shelvings without duplicates; the recurring job runs; failures surface in Settings |
 | 7 | Polish | Rate limits in place; every view has empty, loading, and error states; deployment documented; Brakeman clean |
 
@@ -324,3 +382,4 @@ Example: a recommendation
 - **Q4. Saved recommendations:** export them as a CSV the user can import back into Goodreads as a "to-read" shelf?
 - **Q5. Password reset:** it needs email delivery (SMTP provider). Is it in v1 or v1.1?
 - **Q6. Re-enrichment:** how often should we refresh Open Library metadata, if ever?
+- **Q7. Is the tiering worth it?** Build a small eval in milestone 5 (around 20 real profiles, judged on relevance and reason quality) and compare it against a single Opus 5.5 call at `low` effort. Keep the agent only if it wins on quality per dollar. A single model can also reuse its prompt cache across steps.
