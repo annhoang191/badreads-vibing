@@ -190,7 +190,10 @@ GEM
       racc (~> 1.4)
     opentelemetry-api (1.11.1)
       logger
-    pagy (9.4.0)
+    pagy (43.8.1)
+      json
+      uri
+      yaml
     parallel (2.3.0)
     parser (3.3.13.0)
       ast (~> 2.4.1)
@@ -353,6 +356,7 @@ GEM
       base64
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
+    yaml (0.4.0)
     zeitwerk (2.8.3)
 
 PLATFORMS
@@ -381,7 +385,7 @@ DEPENDENCIES
   faraday-retry (~> 2.2)
   feedjira (~> 3.2)
   json (~> 2.10)
-  pagy (~> 9.0)
+  pagy (~> 43.8)
   pg (~> 1.1)
   puma (>= 5.0)
   rack-cors
