@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Sets up (or updates) a development environment. Safe to run repeatedly.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+step() { printf '\n== %s ==\n' "$1"; }
+fail() { printf 'ERROR: %s\n' "$1" >&2; exit 1; }
+
+step "Checking toolchain"
+want_ruby="$(cat .ruby-version)"
+have_ruby="$(ruby -e 'print RUBY_VERSION' 2>/dev/null || true)"
+[ "$have_ruby" = "$want_ruby" ] || fail "Ruby $want_ruby required (found '${have_ruby:-none}'). Run: rbenv install $want_ruby"
+
+node_ok="$(node -e 'const [a,b]=process.versions.node.split(".").map(Number); console.log(a>=24||(a===22&&b>=18)?"yes":"no")' 2>/dev/null || echo no)"
+[ "$node_ok" = "yes" ] || fail "Node 22.18+ or 24+ required (found '$(node -v 2>/dev/null || echo none)')"
+
+if command -v pg_isready >/dev/null; then
+  pg_isready -q || fail "PostgreSQL isn't accepting connections. Start it (e.g. brew services start postgresql)"
+else
+  echo "warning: pg_isready not found; skipping the PostgreSQL check"
+fi
+echo "Ruby $have_ruby, Node $(node -v), PostgreSQL OK"
+
+step "Backend"
+(cd backend && bin/setup --skip-server)
+
+step "Frontend"
+(cd frontend && npm ci --no-audit --no-fund)
+
+if [ ! -f backend/config/master.key ]; then
+  echo
+  echo "warning: backend/config/master.key is missing. Ask a teammate for it, or Rails credentials won't decrypt."
+fi
+
+printf '\nDone. Start everything with: bin/dev\n'

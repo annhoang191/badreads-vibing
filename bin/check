@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Runs every linter and test suite. Must pass before calling a task done.
+# Usage: bin/check [--backend|--frontend]
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+scope="${1:-all}"
+case "$scope" in all|--backend|--frontend) ;; *) echo "usage: bin/check [--backend|--frontend]" >&2; exit 64 ;; esac
+
+run() { printf '\n▶ %s\n' "$*"; "$@"; }
+
+if [ "$scope" != "--frontend" ]; then
+  (
+    cd backend
+    run bin/rubocop
+    run bin/brakeman --no-pager -q
+    run bundle exec rspec
+  )
+fi
+
+if [ "$scope" != "--backend" ]; then
+  (
+    cd frontend
+    run npm run --silent lint
+    run npm run --silent type-check
+    run npx vitest run
+  )
+fi
+
+printf '\n✅ All checks passed (%s)\n' "${scope#--}"
