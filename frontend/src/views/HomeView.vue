@@ -1,17 +1,13 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 import { getHealth } from '@/api/health'
+import { useAsync } from '@/composables/useAsync'
 
-const apiStatus = ref<'checking' | 'ok' | 'down'>('checking')
+const { data, error, run } = useAsync(getHealth)
 
-onMounted(async () => {
-  try {
-    await getHealth()
-    apiStatus.value = 'ok'
-  } catch {
-    apiStatus.value = 'down'
-  }
-})
+const apiStatus = computed(() => (error.value ? 'down' : data.value ? 'ok' : 'checking'))
+
+onMounted(() => run())
 </script>
 
 <template>

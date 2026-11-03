@@ -2,14 +2,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, request, setAuthToken } from '@/api/client'
 
 function mockFetch(status: number, body: unknown) {
-  const fn = vi
-    .fn<typeof fetch>()
-    .mockResolvedValue(
-      new Response(JSON.stringify(body), {
-        status,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    )
+  const fn = vi.fn<typeof fetch>().mockResolvedValue(
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    }),
+  )
   vi.stubGlobal('fetch', fn)
   return fn
 }
