@@ -20,6 +20,14 @@ export function setAuthToken(token: string | null) {
   authToken = token
 }
 
+type UnauthorizedHandler = () => void
+let unauthorizedHandler: UnauthorizedHandler | null = null
+
+/** Registers a callback invoked on any 401 (except a failed login attempt). */
+export function onUnauthorized(handler: UnauthorizedHandler | null) {
+  unauthorizedHandler = handler
+}
+
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)
   headers.set('Accept', 'application/json')
@@ -35,6 +43,8 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   const body = await response.json().catch(() => null)
 
   if (!response.ok) {
+    const isLogin = path === '/session' && init.method === 'POST'
+    if (response.status === 401 && !isLogin) unauthorizedHandler?.()
     const err = (body as ApiErrorBody | null)?.error
     throw new ApiError(
       response.status,
