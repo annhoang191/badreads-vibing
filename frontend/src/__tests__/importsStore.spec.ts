@@ -41,6 +41,16 @@ describe('imports store', () => {
     expect(importsApi.get).toHaveBeenCalledTimes(2)
   })
 
+  it('updates the history entry when a tracked import settles', async () => {
+    vi.mocked(importsApi.get).mockResolvedValue({ ...baseImport, source: 'rss', status: 'failed' })
+    const store = useImportsStore()
+    store.history = [{ ...baseImport, source: 'rss', status: 'processing' }]
+    store.track({ ...baseImport, source: 'rss', status: 'processing' })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(store.history).toHaveLength(1)
+    expect(store.history[0]?.status).toBe('failed')
+  })
+
   it('exposes the ApiError code on upload failure', async () => {
     vi.mocked(importsApi.create).mockRejectedValue(
       new ApiError(422, 'invalid_goodreads_export', 'Missing Title'),

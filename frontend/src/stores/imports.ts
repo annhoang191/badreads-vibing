@@ -28,6 +28,12 @@ export const useImportsStore = defineStore('imports', () => {
           // Stats refresh is best-effort.
         }
       }
+      // Keep the history list in sync once an import settles (e.g. after an RSS sync in Settings).
+      if (isTerminal(latest)) {
+        const i = history.value.findIndex((imp) => imp.id === latest.id)
+        if (i >= 0) history.value.splice(i, 1, latest)
+        else history.value.unshift(latest)
+      }
       return latest
     },
     { until: isTerminal },
