@@ -10,6 +10,11 @@ Rails.application.routes.draw do
       resource :me, only: :show, controller: "me"
       resources :imports, only: %i[index show create]
       resources :books, only: :index
+
+      # Feature route files (config/routes/*.rb), one per area.
+      draw :insights
+      draw :goodreads
+      draw :recommendations
     end
   end
 end
