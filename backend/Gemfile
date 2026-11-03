@@ -67,3 +67,6 @@ gem "csv"
 gem "faraday", "~> 2.12"
 gem "faraday-retry", "~> 2.2"
 gem "feedjira", "~> 3.2"
+
+# Claude API (recommendation agent, SPEC §4.4)
+gem "anthropic"

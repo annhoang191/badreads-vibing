@@ -75,6 +75,11 @@ GEM
     addressable (2.9.2)
       public_suffix (>= 2.0.2, < 8.0)
     alba (4.0.2)
+    anthropic (2.4.0)
+      base64 (~> 0.1)
+      connection_pool (>= 2, < 4)
+      opentelemetry-api (>= 1.2.4, < 2)
+      standardwebhooks (~> 1.0)
     ast (2.4.3)
     base64 (0.3.0)
     bcrypt (3.1.22)
@@ -183,6 +188,8 @@ GEM
       racc (~> 1.4)
     nokogiri (1.19.7-x86_64-linux-musl)
       racc (~> 1.4)
+    opentelemetry-api (1.11.1)
+      logger
     pagy (9.4.0)
     parallel (2.3.0)
     parser (3.3.13.0)
@@ -326,6 +333,7 @@ GEM
       fugit (~> 1.11)
       railties (>= 7.1)
       thor (>= 1.3.1)
+    standardwebhooks (1.1.0)
     thor (1.5.0)
     timeout (0.6.1)
     tsort (0.2.0)
@@ -361,6 +369,7 @@ PLATFORMS
 
 DEPENDENCIES
   alba
+  anthropic
   bcrypt (~> 3.1.7)
   bootsnap
   brakeman
