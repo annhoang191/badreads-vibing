@@ -35,13 +35,13 @@ Run from the repo root unless noted.
   (`unknown keyword: quirks_mode`). Don't bump it until Rails supports json 3.
 - **Known debt:** Rails 8.0 reaches end of life on 2026-11-07. The Brakeman EOL warning is ignored in
   `backend/config/brakeman.ignore` until we upgrade to 8.1. When you upgrade, remove that entry and re-check the json pin.
-- All endpoints live under `Api::V1::` in `app/controllers/api/v1/` and inherit from
-  `Api::V1::BaseController`. JSON only.
-- Business logic goes in `app/services/<Namespace>/<Name>.rb` with a single public `#call`.
-  Controllers stay thin: params → service → serializer.
-- Serializers use Alba (`app/serializers`). Never `render json: model` directly.
+- **Design patterns:** load the `rails-patterns` skill (`.claude/skills/rails-patterns/`) before writing backend code.
+  It maps each kind of code to its pattern and location (service, query, serializer, form, client, value object, job).
+  Hard rules: thin controllers under `Api::V1::` inheriting `BaseController`; logic in `ApplicationService`
+  subclasses; complex reads in `ApplicationQuery` subclasses; output via `ApplicationSerializer` (Alba), never
+  `render json: model`; no side-effecting model callbacks.
 - Error shape: `{ error: { code:, message:, details: } }`. Raise `ApiError` subclasses
-  (`app/errors/api_error.rb`); they're rescued in `Api::V1::BaseController`.
+  (`app/errors/api_error.rb`); they're rescued in `Api::V1::BaseController`. Don't use Result objects.
 - Auth: Rails 8 authentication generator with `Authorization: Bearer <session.token>`.
   Every controller requires auth unless it explicitly calls `allow_unauthenticated_access`.
 - Anything slow (imports, enrichment, LLM calls) runs in a job. The endpoint returns 202 plus a resource the client can poll.
@@ -72,10 +72,11 @@ Architecture and contracts are in `SPEC.md` §4.4. Rules for working on it:
 - Specs stub the Anthropic client. Tests never call a real model.
 
 ## Frontend conventions
+- **Design patterns:** load the `vue-patterns` skill (`.claude/skills/vue-patterns/`) before writing frontend code.
+  It maps each kind of code to its pattern (view, presentational component, Pinia setup store, composable, API module).
+  Hard rules: data flows View → store → `src/api/*` → `request()`; presentational components use props and events
+  only (no stores, no API calls); `useAsync` for async state; branch on `ApiError.code`, never on message text.
 - Vue 3 `<script setup lang="ts">`, Composition API only. No Options API.
-- State lives in Pinia stores in `src/stores/`. API calls go only through `src/api/`
-  (`request()` in `src/api/client.ts` adds the bearer token and throws `ApiError`).
-  Components never call `fetch` directly.
 - API base URL comes from `VITE_API_URL` (`frontend/.env.development`).
 - Styling uses Tailwind v4 utility classes (`@import 'tailwindcss'` in `src/style.css`).
   Charts use `vue-chartjs` wrappers in `src/components/charts/`.
