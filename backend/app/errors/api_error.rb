@@ -45,6 +45,12 @@ class ApiError < StandardError
     end
   end
 
+  class NotEnoughData < ApiError
+    def initialize(message = "Rate at least #{Recommendations::BuildProfile::MIN_RATED} books to get recommendations", **opts)
+      super(message, code: "not_enough_data", status: :unprocessable_content, **opts)
+    end
+  end
+
   class InvalidFile < ApiError
     def initialize(message = "The uploaded file is not a valid CSV", **opts)
       super(message, code: "invalid_file", status: :unprocessable_content, **opts)
