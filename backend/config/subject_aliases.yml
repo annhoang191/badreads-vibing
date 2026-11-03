@@ -1,0 +1,43 @@
+# Noisy subject -> canonical lowercase subject.
+# Keys and values are lowercase. Keys containing commas or colons are quoted.
+sci-fi: science fiction
+scifi: science fiction
+science-fiction: science fiction
+"fiction, science fiction, general": science fiction
+fantasy fiction: fantasy
+epic fantasy: fantasy
+high fantasy: fantasy
+"fiction, fantasy, epic": fantasy
+dystopias: dystopia
+dystopian fiction: dystopia
+"fiction, dystopian": dystopia
+space opera: space opera
+artificial intelligence: artificial intelligence
+robots: artificial intelligence
+mystery fiction: mystery
+detective and mystery stories: mystery
+historical fiction: historical fiction
+"fiction, historical": historical fiction
+literary fiction: literary fiction
+"fiction, literary": literary fiction
+coming of age: coming of age
+bildungsromans: coming of age
+self-help: self help
+self-help techniques: self help
+popular science: popular science
+"biography & autobiography": biography
+autobiographies: biography
+"psychology, applied": psychology
+thrillers: thriller
+suspense fiction: thriller
+horror tales: horror
+magic: magic
+wizards: magic
+time travel: time travel
+post-apocalyptic: post-apocalyptic
+romance fiction: romance
+love stories: romance
+young adult fiction: young adult
+young adult: young adult
+nonfiction: non-fiction
+memoirs: memoir

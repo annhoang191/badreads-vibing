@@ -1,0 +1,25 @@
+# Subjects that carry no topical meaning and are dropped during import.
+# exact: lowercase strings compared against the normalized subject.
+# patterns: Ruby regex sources, matched case-insensitively against the normalized subject.
+exact:
+  - fiction
+  - accessible book
+  - protected daisy
+  - in library
+  - large type books
+  - lending library
+  - english language
+  - open library staff picks
+  - internet archive wishlist
+  - new york times bestseller
+  - overdrive
+  - ebooks
+  - juvenile works
+  - translations into english
+patterns:
+  - '^nyt:'
+  - '^\d+$'
+  - 'translations'
+  - '^reading level'
+  - '^award:'
+  - '\(fictitious character\)'
