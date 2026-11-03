@@ -44,6 +44,12 @@ export const useImportsStore = defineStore('imports', () => {
     poller.start()
   }
 
+  /** Starts polling an import created elsewhere (e.g. an RSS sync). */
+  function track(created: Import) {
+    current.value = created
+    poller.start()
+  }
+
   async function loadHistory() {
     history.value = (await historyCall.run()) ?? history.value
   }
@@ -57,5 +63,5 @@ export const useImportsStore = defineStore('imports', () => {
     }
   }
 
-  return { current, history, uploading, error, inProgress, upload, loadHistory, resume }
+  return { current, history, uploading, error, inProgress, upload, track, loadHistory, resume }
 })

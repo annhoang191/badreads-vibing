@@ -105,3 +105,69 @@ export interface BookFilters {
   sort: BookSort
   page: number
 }
+
+export interface BookDiff {
+  book_id: number
+  title: string
+  author: string
+  my_rating: number
+  avg_rating: number
+  diff: number
+}
+
+export interface InsightsSnapshot {
+  version: 1
+  computed_at: string
+  coverage: {
+    read_total: number
+    dated: number
+    with_pages: number
+    rated: number
+    enriched: number
+  }
+  metrics: {
+    totals: { read: number; currently_reading: number; to_read: number; pages_read: number }
+    books_per_year: { year: number | null; count: number }[] // ascending; null = undated, last
+    books_per_month: { month: string; count: number }[] // last 24 months incl. current, zero-filled
+    pages_per_year: { year: number; pages: number }[] // ascending, dated books only
+    rating_distribution: {
+      '1': number
+      '2': number
+      '3': number
+      '4': number
+      '5': number
+      unrated: number
+    }
+    average_rating: number | null // 2 decimals
+    rating_vs_crowd: {
+      mean_diff: number | null // mean(my_rating - avg_rating), 2 decimals
+      higher: BookDiff[] // up to 5, largest positive diff first
+      lower: BookDiff[] // up to 5, largest negative diff first
+    }
+    top_authors: { author: string; count: number; mean_rating: number | null }[] // up to 10
+    top_subjects: { subject: string; weight: number; count: number }[] // up to 15, weight 0..1
+    length_buckets: {
+      under_200: number
+      from_200_to_349: number
+      from_350_to_499: number
+      over_500: number
+      unknown: number
+    }
+    publication_decades: { decade: number | null; count: number }[] // e.g. 1960; null = unknown, last
+    pace: { books_per_month_12m: number; best_month: { month: string; count: number } | null }
+    rereads: { book_id: number; title: string; author: string; read_count: number }[]
+    tbr: {
+      size: number
+      oldest: { book_id: number; title: string; author: string; date_added: string | null }[]
+      median_age_days: number | null
+    }
+  }
+}
+
+export interface GoodreadsProfile {
+  goodreads_user_id: string
+  rss_enabled: boolean
+  last_synced_at: string | null
+  last_error: string | null
+  consecutive_failures: number
+}
