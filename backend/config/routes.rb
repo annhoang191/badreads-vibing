@@ -5,6 +5,9 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       resource :health, only: :show, controller: "health"
+      resources :registrations, only: :create
+      resource :session, only: %i[create destroy]
+      resource :me, only: :show, controller: "me"
     end
   end
 end

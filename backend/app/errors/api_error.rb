@@ -23,7 +23,19 @@ class ApiError < StandardError
 
   class Unprocessable < ApiError
     def initialize(message = "Validation failed", **opts)
-      super(message, code: "unprocessable", status: :unprocessable_entity, **opts)
+      super(message, code: "unprocessable", status: :unprocessable_content, **opts)
+    end
+  end
+
+  class InvalidCredentials < ApiError
+    def initialize(message = "Invalid email address or password", **opts)
+      super(message, code: "invalid_credentials", status: :unauthorized, **opts)
+    end
+  end
+
+  class RateLimited < ApiError
+    def initialize(message = "Too many requests, try again later", **opts)
+      super(message, code: "rate_limited", status: :too_many_requests, **opts)
     end
   end
 end

@@ -8,6 +8,9 @@ module Api
       rescue_from ActiveRecord::RecordInvalid do |e|
         render_api_error(ApiError::Unprocessable.new(details: e.record.errors.to_hash))
       end
+      rescue_from ActiveModel::ValidationError do |e|
+        render_api_error(ApiError::Unprocessable.new(details: e.model.errors.to_hash))
+      end
       rescue_from ActionController::ParameterMissing do |e|
         render_api_error(ApiError::Unprocessable.new(e.message))
       end

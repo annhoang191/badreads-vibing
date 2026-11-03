@@ -5,7 +5,7 @@ RSpec.describe ApiError do
     error = ApiError::Unprocessable.new(details: { email: [ "is invalid" ] })
 
     expect(error.code).to eq("unprocessable")
-    expect(error.status).to eq(:unprocessable_entity)
+    expect(error.status).to eq(:unprocessable_content)
     expect(error.details).to eq(email: [ "is invalid" ])
   end
 end
