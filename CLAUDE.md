@@ -33,6 +33,8 @@ Run from the repo root unless noted.
   (in development too, with a separate queue DB), cache uses Solid Cache. No Redis.
 - `json` is pinned to `~> 2.10` because json 3.x breaks ActiveSupport 8.0's encoder
   (`unknown keyword: quirks_mode`). Don't bump it until Rails supports json 3.
+- **Known debt:** Rails 8.0 reaches end of life on 2026-11-07. The Brakeman EOL warning is ignored in
+  `backend/config/brakeman.ignore` until we upgrade to 8.1. When you upgrade, remove that entry and re-check the json pin.
 - All endpoints live under `Api::V1::` in `app/controllers/api/v1/` and inherit from
   `Api::V1::BaseController`. JSON only.
 - Business logic goes in `app/services/<Namespace>/<Name>.rb` with a single public `#call`.
