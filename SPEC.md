@@ -157,6 +157,36 @@ Shelfsight imports a reader's Goodreads library, turns it into a clear picture o
 
 Snapshot format: `{ version: 1, computed_at, coverage: {...}, metrics: { <name>: ... } }`. Bump `version` whenever a metric's shape changes. The frontend type lives in `src/types/api.ts`.
 
+**Exact snapshot shape (v1).** Both the backend (`Analytics::ReadingProfile`) and the frontend types must match this. Months are `"YYYY-MM"`, dates ISO `"YYYY-MM-DD"`, and `null` means unknown.
+```ts
+interface InsightsSnapshot {
+  version: 1
+  computed_at: string
+  coverage: { read_total: number; dated: number; with_pages: number; rated: number; enriched: number }
+  metrics: {
+    totals: { read: number; currently_reading: number; to_read: number; pages_read: number }
+    books_per_year: { year: number | null; count: number }[]            // ascending; null = undated, last
+    books_per_month: { month: string; count: number }[]                  // last 24 months incl. current, zero-filled
+    pages_per_year: { year: number; pages: number }[]                    // ascending, dated books only
+    rating_distribution: { '1': number; '2': number; '3': number; '4': number; '5': number; unrated: number }
+    average_rating: number | null                                        // 2 decimals
+    rating_vs_crowd: {
+      mean_diff: number | null                                           // mean(my_rating - avg_rating), 2 decimals
+      higher: BookDiff[]                                                 // up to 5, largest positive diff first
+      lower: BookDiff[]                                                  // up to 5, largest negative diff first
+    }
+    top_authors: { author: string; count: number; mean_rating: number | null }[]   // up to 10
+    top_subjects: { subject: string; weight: number; count: number }[]             // up to 15, weight 0..1 (§4.2)
+    length_buckets: { under_200: number; from_200_to_349: number; from_350_to_499: number; over_500: number; unknown: number }
+    publication_decades: { decade: number | null; count: number }[]     // e.g. 1960; null = unknown, last
+    pace: { books_per_month_12m: number; best_month: { month: string; count: number } | null }
+    rereads: { book_id: number; title: string; author: string; read_count: number }[]
+    tbr: { size: number; oldest: { book_id: number; title: string; author: string; date_added: string | null }[]; median_age_days: number | null }
+  }
+}
+interface BookDiff { book_id: number; title: string; author: string; my_rating: number; avg_rating: number; diff: number }
+```
+
 ### 4.2 Subject normalization
 Open Library subjects are noisy. Normalization steps:
 1. Lowercase and strip; drop text in parentheses; split on ` -- `.
@@ -290,7 +320,8 @@ The CSV file itself is processed from a temporary Active Storage blob that is **
 | `DELETE /me` | ✓ | 204 | |
 | `POST /imports` (multipart `file`) | ✓ | 202 `{import}` | 409, 422 |
 | `GET /imports` / `GET /imports/:id` | ✓ | 200 | 404 |
-| `PUT /goodreads_profile` `{goodreads_user_id, rss_enabled}` | ✓ | 200 `{profile}` | 422 |
+| `GET /goodreads_profile` | ✓ | 200 `{profile}` · 204 if none | |
+| `PUT /goodreads_profile` `{goodreads_user_id, rss_enabled}` | ✓ | 200 `{profile}`; profile = `{ goodreads_user_id, rss_enabled, last_synced_at, last_error, consecutive_failures }` | 422 `profile_not_public` / `unprocessable` |
 | `POST /goodreads_profile/sync` | ✓ | 202 `{import}` | 409, 429 |
 | `GET /books?shelf=&tag=&rating=&year=&q=&sort=&page=` | ✓ | 200 `{data, meta}` | |
 | `GET /insights` | ✓ | 200 `{insights}` · 204 if none yet | |
