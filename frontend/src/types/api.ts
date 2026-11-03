@@ -171,3 +171,39 @@ export interface GoodreadsProfile {
   last_error: string | null
   consecutive_failures: number
 }
+
+export type BatchStatus = 'pending' | 'processing' | 'completed' | 'failed'
+
+export interface RecommendedBook {
+  id: number
+  title: string
+  author: string
+  year: number | null
+  num_pages: number | null
+  cover_url: string | null
+  open_library_url: string | null
+}
+
+export interface Recommendation {
+  id: number
+  position: number
+  score: number // 0..100
+  status: 'new' | 'saved' | 'dismissed'
+  reason: string
+  book: RecommendedBook
+}
+
+export interface RecommendationBatch {
+  id: number
+  status: BatchStatus
+  ranked_by: 'agent' | 'heuristic' | null
+  error_message: string | null
+  created_at: string
+  recommendations: Recommendation[] // empty until completed
+}
+
+export interface RecommendationQuota {
+  limit: number
+  remaining: number
+  resets_at: string | null
+}
