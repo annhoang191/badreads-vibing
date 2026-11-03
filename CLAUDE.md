@@ -51,8 +51,8 @@ Run from the repo root unless noted.
 
 ## LLM usage
 Architecture and contracts are in `SPEC.md` §4.4. Rules for working on it:
-- Use the official `anthropic` gem. An orchestrator agent (`Agents::RecommendationOrchestrator`,
-  beta Tool Runner, `Anthropic::BaseTool` subclasses) delegates to stateless subagents in `app/agents/subagents/`.
+- Use the official `anthropic` gem, only through `Llm::Client` (`app/lib/llm/`). The orchestrator (`RecommendationOrchestrator`,
+  a hand-written tool loop in `app/agents/`) delegates to stateless `Subagents::*` in `app/agents/subagents/`. Ruby SDK gotcha: the structured-output key is `output_config: { format_: ... }` (trailing underscore).
 - **Model tiers:** `simple` = `claude-haiku-5-5`, `orchestrator` = `claude-sonnet-5-5`,
   `complex` = `claude-opus-5-5`. Never hard-code a model ID. Resolve it via `Llm::Router.for(:task)`,
   which reads the task→tier allowlist in `config/llm.yml`.

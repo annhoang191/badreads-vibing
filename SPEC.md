@@ -227,11 +227,10 @@ Recommendations are produced by an **orchestrator agent** that plans the work an
 
 ```
 GenerateRecommendationsJob
-  └─ Agents::RecommendationOrchestrator        (orchestrator tier · Sonnet 5.5)
+  └─ Recommendations::Pipeline → RecommendationOrchestrator   (orchestrator tier · Sonnet 5.5)
        ├─ get_reading_profile        tool  → Analytics::ReadingProfile         (no LLM)
-       ├─ search_candidates          tool  → Recommendations::CandidateGenerator (no LLM)
+       ├─ search_candidates          tool  → CandidateSource + CandidatePool  (no LLM)
        ├─ expand_queries             subagent  (simple tier · Haiku 5.5)
-       ├─ classify_subjects          subagent  (simple tier · Haiku 5.5)
        ├─ summarize_reader           subagent  (simple tier · Haiku 5.5)
        ├─ rank_candidates            subagent  (complex tier · Opus 5.5)
        └─ submit_recommendations     tool  → validates + ends the run           (no LLM)
@@ -252,20 +251,20 @@ GenerateRecommendationsJob
 
 | Name | Kind | Input | Output | Notes |
 |---|---|---|---|---|
-| `get_reading_profile` | tool | — | Profile from §4.3 step 1 | Read from the insights snapshot |
-| `search_candidates` | tool | `{ subjects?[], authors?[], queries?[], limit≤30 }` | `[{ id, title, author, year, subjects, pages, pre_score }]` | Applies the FR-C5 exclusions; issues opaque `id`s |
+| `get_reading_profile` | tool | — | Profile from §4.3 step 1 | `Recommendations::BuildProfile` (uses `Analytics::ReadingProfile`) |
+| `search_candidates` | tool | `{ subjects[], authors[], queries[] }` (empty arrays allowed) | `{ added, pool_size, new_top[] }`; the pool itself stays server-side | Applies the FR-C5 exclusions; issues opaque `id`s |
 | `expand_queries` | Haiku | Anchors and top subjects | `{ queries: [≤5 theme queries] }`, e.g. "found family", "unreliable narrator" | Widens the pool beyond literal subjects |
-| `classify_subjects` | Haiku | `[raw_subject]` | `{ raw → canonical \| null }` | Also called by `EnrichBooksJob`; results cached in `subject_mappings`, so each raw string is classified once ever |
+| `classify_subjects` | Haiku | — | — | **Deferred.** The YAML denylist/aliases cover normalization today; add this if unmapped subjects hurt quality |
 | `summarize_reader` | Haiku | Profile stats | `{ persona: ≤80 words, likes[], dislikes[] }` | Compact context for the ranker |
 | `rank_candidates` | **Opus** | Persona, anchors and anti-anchors, ≤ 40 candidates | `{ recommendations: [10 × {id, score, reason}] }` | Called **at most twice per batch** (initial attempt + one retry) |
 | `submit_recommendations` | tool | Ranker output | `ok` or validation errors | The only way the run can end successfully |
 
 **Orchestrator loop**
-- Built on the Ruby SDK's beta Tool Runner (`client.beta.messages.tool_runner`), with each tool and subagent as an `Anthropic::BaseTool` subclass whose `#call` runs the service or the subagent request. Tools use `strict: true`.
+- A hand-written tool loop over `Llm::Client#create` (not the SDK tool runner), so guardrails run between turns and the loop is testable with a scripted fake. Code: `app/agents/recommendation_orchestrator.rb`; subagents in `app/agents/subagents/` (`Subagents::*`). Tools use `strict: true`; all tool results for a turn go back in one user message.
 - `tool_choice` stays `auto`. Forced tool choice returns a 400 on Sonnet 5.5 and Opus 5.5, so the system prompt names the expected sequence instead.
 - **Guardrails, enforced in Ruby:**
   - ≤ 12 orchestrator turns.
-  - `task_budget` of 60k tokens.
+  - 60k-token budget (input + output summed across orchestrator turns, enforced in Ruby).
   - ≤ 3 `search_candidates` calls, ≤ 2 `rank_candidates` calls.
   - 90 s wall-clock limit.
   - Hitting any limit ends the run and uses the heuristic fallback (FR-C7).

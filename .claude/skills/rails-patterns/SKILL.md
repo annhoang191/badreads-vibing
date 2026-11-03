@@ -23,7 +23,7 @@ The backend is a JSON API: `Api::V1::*` controllers → domain objects → Postg
 | Immutable data passed between layers | **Value object** | next to its producer | `Data.define` |
 | Slow, retryable, or scheduled work | **Job** | `app/jobs/` | `ApplicationJob` ✅ |
 | Behaviour chosen by config (e.g. model tier) | **Strategy / registry** | `app/lib/<area>/` | plain Ruby + YAML |
-| An LLM tool or subagent | **Command object** | `app/agents/` | `Anthropic::BaseTool` |
+| An LLM subagent | **Command object** (`Subagents::*`, an `ApplicationService`) | `app/agents/subagents/` | `Llm::Client` ✅ |
 
 ✅ = exists in the repo today. Anything else gets created the first time a milestone needs it, following this skill.
 
@@ -134,7 +134,7 @@ end
 Behaviour that varies by configuration goes in a small registry read from YAML, e.g. `Llm::Router.for(:rank_candidates)`, which returns the tier, model and effort from `config/llm.yml`. Callers never branch on model names.
 
 ## LLM agents (SPEC §4.4)
-Each tool or subagent is one `Anthropic::BaseTool` subclass in `app/agents/` whose `#call` delegates to a service, query or client. The orchestrator is an agent class; the guardrails and output validation are plain Ruby around it. See the `LLM usage` section of `CLAUDE.md`.
+Each subagent is one `Subagents::*` service in `app/agents/subagents/` that makes a single structured-output call through `Llm::Client#json` (never the SDK directly) and returns plain data. `RecommendationOrchestrator` (`app/agents/`) runs a hand-written tool loop and dispatches tool calls to services, clients and subagents; guardrails and output validation (`Recommendations::Validator`) are plain Ruby around it. Test with `spec/support/fake_llm.rb`. See the `LLM usage` section of `CLAUDE.md`.
 
 ## Anti-patterns
 | Don't | Why |
