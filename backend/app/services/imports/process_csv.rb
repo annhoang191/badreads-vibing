@@ -13,10 +13,10 @@ module Imports
       @import.update!(status: :processing, started_at: Time.current)
       raise ArgumentError, "No CSV file attached" unless @import.csv.attached?
 
-      rows, skipped = Goodreads::CsvParser.call(io: @import.csv.download)
+      rows, skipped, warnings = Goodreads::CsvParser.call(io: @import.csv.download)
       stats = Imports::Upserter.call(user: @import.user, rows:, source: :csv)
       stats = stats.merge(rows_total: rows.size + skipped.size, rows_skipped: skipped.size,
-                          errors: skipped.first(MAX_ERRORS))
+                          errors: skipped.first(MAX_ERRORS), warnings:)
       @import.update!(status: :completed, stats:, finished_at: Time.current)
       after_complete
       @import

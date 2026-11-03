@@ -62,4 +62,43 @@ RSpec.describe Goodreads::CsvParser do
     expect(skipped.map { |s| s[:row] }).to eq([ 2, 3, 4, 5 ])
     expect(skipped.map { |s| s[:reason] }).to include("Missing Book Id", /Invalid Book Id/, /Invalid date/, /Unknown shelf/)
   end
+
+  # Regression: a header that didn't match "My Rating" byte-for-byte silently imported every
+  # rating as nil (spreadsheet re-saves change case, add NBSP / zero-width characters).
+  describe "header and value normalization" do
+    def rating_for(header, value = "5")
+      rows, = described_class.call(io: "Book Id,Title,Author,#{header},Exclusive Shelf\n1,Dune,Frank Herbert,#{value},read\n")
+      rows.first.my_rating
+    end
+
+    it "matches headers regardless of case, NBSP, doubled or zero-width spaces" do
+      [ "My Rating", "my rating", "MY RATING", "My\u00A0Rating", "My  Rating", " My Rating ", "\u200BMy Rating" ].each do |h|
+        expect(rating_for(h)).to eq(5), "header #{h.inspect}"
+      end
+    end
+
+    it "accepts spreadsheet-style 4.0 and values with a trailing NBSP" do
+      expect(rating_for("My Rating", "4.0")).to eq(4)
+      expect(rating_for("My Rating", "5\u00A0")).to eq(5)
+    end
+
+    it "keeps 0 as unrated" do
+      expect(rating_for("My Rating", "0")).to be_nil
+    end
+
+    it "keeps line breaks inside reviews" do
+      rows, = described_class.call(io: %(Book Id,Title,Author,Exclusive Shelf,My Review\n1,Dune,Frank Herbert,read,"Line one\nLine two "\n))
+      expect(rows.first.review).to eq("Line one\nLine two")
+    end
+
+    it "warns when the My Rating column is missing" do
+      _, _, warnings = described_class.call(io: "Book Id,Title,Author,Exclusive Shelf\n1,Dune,Frank Herbert,read\n")
+      expect(warnings).to include(a_string_matching(/My Rating/))
+    end
+
+    it "has no warnings for a full Goodreads export" do
+      _, _, warnings = described_class.call(io: file_fixture("goodreads_export.csv").read)
+      expect(warnings).to be_empty
+    end
+  end
 end

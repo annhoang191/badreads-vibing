@@ -50,6 +50,7 @@ export interface ImportStats {
   rows_skipped?: number
   missing_from_source?: number
   errors?: { row: number; reason: string }[]
+  warnings?: string[]
 }
 
 export interface Import {

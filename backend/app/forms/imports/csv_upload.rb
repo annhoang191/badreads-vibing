@@ -24,7 +24,7 @@ module Imports
     end
 
     def missing_headers
-      @missing_headers ||= REQUIRED_HEADERS - header
+      @missing_headers ||= REQUIRED_HEADERS.reject { |h| header.include?(Goodreads::CsvText.header_key(h)) }
     end
 
     private
@@ -58,7 +58,7 @@ module Imports
       @header ||= begin
         text = file.read
         file.rewind
-        (Goodreads::CsvReader.records(text).first || []).map(&:strip)
+        (Goodreads::CsvReader.records(text).first || []).map { |h| Goodreads::CsvText.header_key(h) }
       rescue CSV::MalformedCSVError
         []
       end

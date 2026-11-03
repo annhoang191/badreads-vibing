@@ -44,6 +44,10 @@ RSpec.describe Imports::CsvUpload do
       .to raise_error(ApiError::InvalidGoodreadsExport, /missing Book Id, Title, Author, Exclusive Shelf/)
   end
 
+  it "accepts required headers with different case or stray whitespace" do
+    expect(form(upload("book id,TITLE,Author\u00A0,Exclusive  Shelf\n")).check!).to be_a(described_class)
+  end
+
   it "rejects malformed CSV as not a Goodreads export instead of erroring" do
     expect { form(upload("Book Id,\"Title\n")).check! }
       .to raise_error(ApiError::InvalidGoodreadsExport)

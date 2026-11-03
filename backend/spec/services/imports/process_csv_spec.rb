@@ -23,6 +23,22 @@ RSpec.describe Imports::ProcessCsv do
     expect(import.user.user_books.count).to eq(24)
   end
 
+  it "stores ratings even when the My Rating header was mangled by a spreadsheet re-save" do
+    csv = file_fixture("goodreads_export.csv").read.sub("My Rating", "my rating")
+    attach(csv)
+
+    described_class.call(import:)
+
+    expect(import.user.user_books.where.not(my_rating: nil).count).to eq(13)
+    expect(import.reload.stats["warnings"]).to eq([])
+  end
+
+  it "records a warning when the export has no My Rating column" do
+    attach("Book Id,Title,Author,Exclusive Shelf\n1,Dune,Frank Herbert,read\n")
+    described_class.call(import:)
+    expect(import.reload.stats["warnings"]).to include(a_string_matching(/My Rating/))
+  end
+
   it "enqueues insights and enrichment for the user after a successful import" do
     attach("Book Id,Title,Author,Exclusive Shelf\n1,A,B,read\n")
 

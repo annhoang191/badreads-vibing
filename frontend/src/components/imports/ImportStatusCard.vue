@@ -17,6 +17,7 @@ const label = computed(
 const stats = computed(() => props.import.stats)
 const errors = computed(() => (stats.value?.errors ?? []).slice(0, MAX_ERRORS))
 const extraErrors = computed(() => (stats.value?.errors?.length ?? 0) - errors.value.length)
+const warnings = computed(() => stats.value?.warnings ?? [])
 </script>
 
 <template>
@@ -32,6 +33,9 @@ const extraErrors = computed(() => (stats.value?.errors?.length ?? 0) - errors.v
     <p v-if="props.import.error_message" class="mt-2 text-sm text-red-700">
       {{ props.import.error_message }}
     </p>
+    <ul v-if="warnings.length" class="mt-2 text-sm text-amber-700" data-testid="import-warnings">
+      <li v-for="w in warnings" :key="w">⚠ {{ w }}</li>
+    </ul>
     <div v-if="errors.length" class="mt-2 text-sm">
       <p class="font-medium">Problem rows</p>
       <ul class="list-disc pl-5 text-gray-700">

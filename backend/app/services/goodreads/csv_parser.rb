@@ -5,7 +5,8 @@ module Goodreads
   class CsvParser < ApplicationService
     SHELVES = %w[read currently-reading to-read].freeze
 
-    # io: an IO (StringIO, File) or a String
+    # io: an IO (StringIO, File) or a String.
+    # Returns [rows, skipped, warnings]. Header matching ignores case and stray whitespace.
     def initialize(io:)
       @text = io.respond_to?(:read) ? io.read : io
     end
@@ -17,7 +18,7 @@ module Goodreads
 
       CsvReader.records(@text).each.with_index(1) do |record, number|
         if headers.nil?
-          headers = record.map(&:strip)
+          headers = record.map { |h| CsvText.header_key(h) }
           next
         end
 
@@ -26,36 +27,44 @@ module Goodreads
         skipped << { row: number, reason: e.message }
       end
 
-      [ rows, skipped ]
+      [ rows, skipped, warnings(headers || []) ]
+    end
+
+    # Columns we can import without, but whose absence the user should know about.
+    OPTIONAL_COLUMNS = { "my rating" => "My Rating", "date read" => "Date Read", "bookshelves" => "Bookshelves" }.freeze
+
+    def warnings(headers)
+      OPTIONAL_COLUMNS.reject { |key, _| headers.include?(key) }
+                      .map { |_, name| "Column \"#{name}\" was not found, so it wasn't imported." }
     end
 
     private
 
     def build(r)
-      shelf = r["Exclusive Shelf"].to_s.strip
+      shelf = CsvText.clean(r["exclusive shelf"]).downcase
       raise ArgumentError, "Unknown shelf #{shelf.inspect}" unless SHELVES.include?(shelf)
 
-      title = r["Title"].to_s.strip
+      title = CsvText.clean(r["title"])
       raise ArgumentError, "Missing Title" if title.empty?
 
       CsvRow.new(
-        goodreads_book_id: book_id(r["Book Id"]),
+        goodreads_book_id: book_id(r["book id"]),
         title:,
-        author: text(r["Author"]),
-        additional_authors: list(r["Additional Authors"]),
-        isbn: isbn(r["ISBN"]),
-        isbn13: isbn(r["ISBN13"]),
-        avg_rating: decimal(r["Average Rating"]),
-        num_pages: integer(r["Number of Pages"])&.then { |n| n.positive? ? n : nil },
-        year_published: integer(r["Year Published"]),
-        original_publication_year: integer(r["Original Publication Year"]),
-        my_rating: integer(r["My Rating"])&.then { |n| (1..5).cover?(n) ? n : nil },
+        author: text(r["author"]),
+        additional_authors: list(r["additional authors"]),
+        isbn: isbn(r["isbn"]),
+        isbn13: isbn(r["isbn13"]),
+        avg_rating: decimal(r["average rating"]),
+        num_pages: integer(r["number of pages"])&.then { |n| n.positive? ? n : nil },
+        year_published: integer(r["year published"]),
+        original_publication_year: integer(r["original publication year"]),
+        my_rating: integer(r["my rating"])&.then { |n| (1..5).cover?(n) ? n : nil },
         exclusive_shelf: shelf,
-        shelves: list(r["Bookshelves"]),
-        date_read: date(r["Date Read"]),
-        date_added: date(r["Date Added"]),
-        read_count: integer(r["Read Count"]) || 0,
-        review: text(r["My Review"])
+        shelves: list(r["bookshelves"]),
+        date_read: date(r["date read"]),
+        date_added: date(r["date added"]),
+        read_count: integer(r["read count"]) || 0,
+        review: text(r["my review"])
       )
     end
 
@@ -68,23 +77,24 @@ module Goodreads
     end
 
     # Goodreads wraps ISBNs as ="0441172717" to stop spreadsheets mangling them.
-    def unwrap(value) = value.to_s.strip.delete_prefix("=").delete('"').strip
+    def unwrap(value) = CsvText.clean(value).delete_prefix("=").delete('"').strip
 
     def isbn(value) = unwrap(value).presence
 
-    def text(value) = value.to_s.strip.presence
+    def text(value) = CsvText.trim(value).presence
 
-    def list(value) = value.to_s.split(",").map(&:strip).compact_blank
+    def list(value) = CsvText.clean(value).split(",").map(&:strip).compact_blank
 
+    # Accepts "4" and spreadsheet-style "4.0"; anything else is an error for the row.
     def integer(value)
-      str = value.to_s.strip
+      str = CsvText.clean(value)
       return if str.empty?
 
-      Integer(str, 10)
+      Integer(str.sub(/\.0+\z/, ""), 10)
     end
 
     def decimal(value)
-      str = value.to_s.strip
+      str = CsvText.clean(value)
       return if str.empty?
 
       BigDecimal(str).round(2)
@@ -93,7 +103,7 @@ module Goodreads
     end
 
     def date(value)
-      str = value.to_s.strip
+      str = CsvText.clean(value)
       return if str.empty?
 
       Date.strptime(str, "%Y/%m/%d")
