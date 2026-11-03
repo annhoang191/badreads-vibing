@@ -30,7 +30,11 @@ module Imports
 
     private
 
-    # Later phase: enqueue EnrichBooksJob for unenriched books, then ComputeInsightsJob (FR-I8).
-    def after_complete; end
+    # FR-I8 / FR-N2: stats appear right away; enrichment then recomputes them with subjects.
+    def after_complete
+      user_id = @import.user_id
+      ComputeInsightsJob.perform_later(user_id)
+      EnrichBooksJob.perform_later(user_id)
+    end
   end
 end

@@ -59,8 +59,22 @@ module Imports
     def write(model, attrs, unique_by:)
       attrs = attrs.map { |a| a.reject { |_, v| blank_value?(v) } } if @source == :rss
       attrs.group_by(&:keys).each_value do |group|
-        group.each_slice(BATCH_SIZE) { |batch| model.upsert_all(batch, unique_by:) }
+        options = { unique_by: }
+        options[:on_duplicate] = book_on_duplicate(group.first.keys) if model == Book && @source == :csv
+        group.each_slice(BATCH_SIZE) { |batch| model.upsert_all(batch, **options) }
       end
+    end
+
+    # A re-import must not blank values that enrichment filled in (FR-E2): for these columns a nil
+    # in the CSV keeps the stored value. Every other imported column is overwritten as before.
+    ENRICHABLE_COLUMNS = %w[num_pages original_publication_year].freeze
+
+    def book_on_duplicate(columns)
+      sets = (columns.map(&:to_s) - [ "goodreads_book_id" ]).map do |col|
+        quoted = Book.connection.quote_column_name(col)
+        ENRICHABLE_COLUMNS.include?(col) ? "#{quoted} = COALESCE(EXCLUDED.#{quoted}, books.#{quoted})" : "#{quoted} = EXCLUDED.#{quoted}"
+      end
+      Arel.sql((sets + [ "updated_at = CURRENT_TIMESTAMP" ]).join(", "))
     end
 
     def blank_value?(value) = value.nil? || value == []

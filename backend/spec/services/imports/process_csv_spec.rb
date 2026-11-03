@@ -23,6 +23,21 @@ RSpec.describe Imports::ProcessCsv do
     expect(import.user.user_books.count).to eq(24)
   end
 
+  it "enqueues insights and enrichment for the user after a successful import" do
+    attach("Book Id,Title,Author,Exclusive Shelf\n1,A,B,read\n")
+
+    expect { described_class.call(import:) }
+      .to have_enqueued_job(ComputeInsightsJob).with(import.user_id)
+      .and have_enqueued_job(EnrichBooksJob).with(import.user_id)
+  end
+
+  it "does not enqueue follow-up jobs when the import fails" do
+    attach("Book Id,Title,Author,Exclusive Shelf\n1,A,B,read\n")
+    allow(Imports::Upserter).to receive(:call).and_raise(StandardError, "boom")
+
+    expect { described_class.call(import:) }.not_to have_enqueued_job(EnrichBooksJob)
+  end
+
   it "moves through processing before completing" do
     attach("Book Id,Title,Author,Exclusive Shelf\n1,A,B,read\n")
     seen = nil

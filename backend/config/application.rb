@@ -40,5 +40,9 @@ module Shelfsight
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
+
+    # Contact address sent in the Open Library User-Agent (FR-E3) and the minimum seconds between requests.
+    config.x.open_library_contact = ENV.fetch("OPEN_LIBRARY_CONTACT", "hquynhanh19@gmail.com")
+    config.x.open_library_min_interval = 1.0
   end
 end

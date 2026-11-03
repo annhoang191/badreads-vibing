@@ -29,6 +29,23 @@ RSpec.describe Imports::Upserter do
     expect(@stats).to include(books_created: 0, books_updated: 2, shelvings_created: 0, shelvings_updated: 2)
   end
 
+  it "keeps enriched num_pages and original_publication_year when a CSV re-import has nil for them" do
+    described_class.call(user:, rows: [ row(1, num_pages: nil, original_publication_year: nil) ])
+    Book.find_by(goodreads_book_id: "1").update!(num_pages: 412, original_publication_year: 1965)
+
+    described_class.call(user:, rows: [ row(1, num_pages: nil, original_publication_year: nil, title: "Retitled") ])
+
+    expect(Book.find_by(goodreads_book_id: "1")).to have_attributes(num_pages: 412, original_publication_year: 1965,
+                                                                    title: "Retitled")
+  end
+
+  it "still overwrites num_pages when the CSV carries a value" do
+    described_class.call(user:, rows: [ row(1, num_pages: 300) ])
+    described_class.call(user:, rows: [ row(1, num_pages: 350) ])
+
+    expect(Book.find_by(goodreads_book_id: "1").num_pages).to eq(350)
+  end
+
   it "counts changed values as updates and applies them" do
     described_class.call(user:, rows: [ row(1) ])
     stats = described_class.call(user:, rows: [ row(1, my_rating: 2, title: "New title"), row(3) ])
@@ -38,11 +55,11 @@ RSpec.describe Imports::Upserter do
     expect(Book.find_by(goodreads_book_id: "1").title).to eq("New title")
   end
 
-  it "lets a CSV overwrite with blanks" do
+  it "lets a CSV overwrite with blanks (except the enrichable book columns)" do
     described_class.call(user:, rows: [ row(1) ])
-    described_class.call(user:, rows: [ row(1, my_rating: nil, num_pages: nil) ])
+    described_class.call(user:, rows: [ row(1, my_rating: nil, num_pages: nil, year_published: nil) ])
 
-    expect(Book.find_by(goodreads_book_id: "1").num_pages).to be_nil
+    expect(Book.find_by(goodreads_book_id: "1")).to have_attributes(num_pages: 300, year_published: nil)
     expect(user.user_books.first.my_rating).to be_nil
   end
 
