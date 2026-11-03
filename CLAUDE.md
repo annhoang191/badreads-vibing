@@ -15,7 +15,10 @@ Monorepo: `backend/` (Rails 8 API-only) + `frontend/` (Vue 3 + Vite + TS).
 
 ## Commands
 Run from the repo root unless noted.
+- `bin/setup`: install everything and prepare the databases (idempotent)
 - `bin/dev`: start Rails (:3000), Solid Queue (`bin/jobs`), and Vite (:5173) via foreman
+- `bin/check [--backend|--frontend]`: rubocop, brakeman, rspec, then lint, type-check, vitest. **Must pass before a task is done.**
+- Targeted commands while iterating:
 - Backend (`cd backend`):
   - `bin/rails db:prepare` (creates `shelfsight_development` + `shelfsight_development_queue`)
   - `bundle exec rspec` / `bundle exec rspec spec/path_spec.rb:42`
@@ -83,7 +86,14 @@ Architecture and contracts are in `SPEC.md` §4.4. Rules for working on it:
   Request specs cover every endpoint.
 - Sample Goodreads export fixture: `backend/spec/fixtures/files/goodreads_export.csv`.
 - Frontend: Vitest + Vue Test Utils for stores and components that contain logic (`src/__tests__/`).
-- Before you call a task done, run the relevant test suite and linter and confirm they pass.
+- Before you call a task done, run `bin/check` (or the `--backend`/`--frontend` half you touched) and confirm it passes.
+  CI (`.github/workflows/`) runs the same checks.
+
+## Claude Code hooks (`.claude/settings.json`)
+- After every Edit/Write, `format.rb` runs `rubocop -a` (backend Ruby) or prettier (frontend `src/`) on that file.
+  Don't spend turns fixing style by hand.
+- `protect.rb` blocks Read/Edit/Write on `config/master.key`, `config/credentials/*.key`, and `.env*`
+  (except `frontend/.env.development`). If it blocks you, change your approach; don't try to work around it.
 
 ## Workflow
 - Make small, focused changes. Add a migration and a spec with every model change.

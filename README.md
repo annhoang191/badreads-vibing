@@ -10,9 +10,9 @@ Import your Goodreads library, see how you read, and get book suggestions you ca
 Requirements: Ruby 3.4.10 (rbenv), Node 22.18+ or 24.12+, PostgreSQL running locally.
 
 ```sh
-cd backend && bundle install && bin/rails db:prepare && cd ..
-cd frontend && npm install && cd ..
-bin/dev
+bin/setup   # checks the toolchain, installs gems and npm packages, prepares the databases
+bin/dev     # runs the API, job worker, and Vite
+bin/check   # runs every linter and test suite (also what CI runs)
 ```
 
 - API: http://localhost:3000/api/v1/health
