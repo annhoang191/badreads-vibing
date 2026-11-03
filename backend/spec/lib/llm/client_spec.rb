@@ -50,6 +50,14 @@ RSpec.describe Llm::Client do
     expect { client.json(task: :expand_queries, system: "s", input: {}, schema: {}) }.to raise_error(described_class::InvalidJson)
   end
 
+  it "fails fast without an API key, so callers fall back without a network call" do
+    allow(Rails.application.credentials).to receive(:dig).with(:anthropic, :api_key).and_return(nil)
+    allow(ENV).to receive(:fetch).and_call_original
+    allow(ENV).to receive(:fetch).with("ANTHROPIC_API_KEY", nil).and_return(nil)
+    expect { described_class.new.create(task: :summarize_reader, system: "s", messages: [], max_tokens: 10) }
+      .to raise_error(described_class::Error, /not configured/)
+  end
+
   it "wraps SDK errors and logs them" do
     allow(messages_api).to receive(:create).and_raise(Anthropic::Errors::APIConnectionError.new(url: "https://api", request: nil))
     expect { client.create(task: :summarize_reader, system: "s", messages: [], max_tokens: 10) }

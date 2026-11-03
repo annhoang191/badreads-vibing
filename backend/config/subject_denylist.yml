@@ -16,7 +16,22 @@ exact:
   - ebooks
   - juvenile works
   - translations into english
+  - new york times reviewed
+  - long now manual for civilization
+  - large print
+  - general
+  - nouvelles
+  - romans
+  - roman
 patterns:
+  - 'award winner'
+  - 'award nominee'
+  - '^award'
+  - 'manual for civilization'
+  - 'reviewed$'
+  - 'bestseller'
+  - '^series:'
+  - '^collectionid:'
   - '^nyt:'
   - '^\d+$'
   - 'translations'

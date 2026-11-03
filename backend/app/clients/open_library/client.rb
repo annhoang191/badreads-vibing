@@ -78,13 +78,27 @@ module OpenLibrary
       end
     end
 
-    def get(path, params = nil)
-      @throttle.wait
-      response = connection.get(path, params)
-      return if response.status == 404
-      raise Error, "Open Library #{response.status} for #{path}" unless response.success?
+    MAX_REDIRECTS = 3
+    REDIRECT_STATUSES = [ 301, 302, 303, 307, 308 ].freeze
 
-      response.body
+    # Open Library redirects some endpoints (e.g. /isbn/{isbn}.json -> /books/OL..M.json),
+    # and Faraday doesn't follow redirects, so follow same-host ones here.
+    def get(path, params = nil)
+      MAX_REDIRECTS.succ.times do
+        @throttle.wait
+        response = connection.get(path, params)
+        return if response.status == 404
+
+        if REDIRECT_STATUSES.include?(response.status)
+          path = redirect_target(response.headers["location"], path)
+          params = nil # the Location already carries any query
+          next
+        end
+        raise Error, "Open Library #{response.status} for #{path}" unless response.success?
+
+        return response.body
+      end
+      raise Error, "Open Library: too many redirects for #{path}"
     rescue Faraday::Error => e
       raise Error, "Open Library request failed: #{e.class}: #{e.message}"
     end
@@ -99,6 +113,15 @@ module OpenLibrary
                           exceptions: Faraday::Retry::Middleware::DEFAULT_EXCEPTIONS + [ Faraday::ConnectionFailed ]
         f.response :json, content_type: /\bjson/
       end
+    end
+
+    def redirect_target(location, from)
+      raise Error, "Open Library redirect without Location for #{from}" if location.blank?
+
+      uri = URI.join(@base_url, location)
+      raise Error, "Open Library redirected off-site to #{uri.host}" unless uri.host == URI(@base_url).host
+
+      uri.request_uri
     end
 
     def positive_id(id) = id.is_a?(Integer) && id.positive? ? id : nil

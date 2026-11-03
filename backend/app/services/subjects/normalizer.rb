@@ -29,9 +29,11 @@ module Subjects
       end
     end
 
-    def initialize(subjects:, mappings: nil)
+    # exclude: strings that must not become subjects (e.g. the book's own title / series name).
+    def initialize(subjects:, mappings: nil, exclude: [])
       @subjects = Array(subjects)
       @mappings = mappings
+      @exclude = Array(exclude).map { |e| e.to_s.downcase.sub(/\s*\(.*\)\z/, "").squish }.to_set
     end
 
     def call
@@ -42,18 +44,23 @@ module Subjects
           result << canonical if canonical
         end
       end
-      result.uniq.first(MAX_SUBJECTS)
+      result.uniq.reject { |s| @exclude.include?(s) }.first(MAX_SUBJECTS)
     end
 
     private
 
     # Step 1: lowercase/strip, split on " -- ", drop "(...)" text. Patterns such as
     # "(fictitious character)" are checked against the segment before the parentheses go.
+    # Also splits BISAC-style "Fiction, science fiction, action & adventure" on commas,
+    # unless the whole segment is a known alias key (some aliases contain commas).
     def split_parts(raw)
-      raw.to_s.downcase.strip.split(" -- ").filter_map do |segment|
-        next if denied?(segment.squish)
+      raw.to_s.downcase.strip.split(" -- ").flat_map do |segment|
+        next [] if denied?(segment.squish)
 
-        segment.gsub(/\([^)]*\)/, "").squish.presence
+        segment = segment.gsub(/\([^)]*\)/, "").squish
+        next [ segment ] if self.class.aliases.key?(segment) || mappings.key?(segment)
+
+        segment.split(/\s*,\s*/).filter_map { |part| part.squish.presence }
       end
     end
 

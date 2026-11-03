@@ -47,7 +47,7 @@ module Books
 
     def apply(match)
       attrs = { enrichment_status: :enriched, enriched_at: Time.current,
-                subjects: @normalizer.call(subjects: match.subjects) }
+                subjects: @normalizer.call(subjects: match.subjects, exclude: [ @book.title ]) }
       attrs[:open_library_work_key] = match.work_key unless key_taken?(match.work_key)
       attrs[:cover_url] = format(COVER_URL, id: match.cover_id) if match.cover_id
       attrs[:num_pages] = match.pages if @book.num_pages.nil? && match.pages.to_i.positive?

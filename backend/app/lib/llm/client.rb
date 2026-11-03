@@ -46,9 +46,13 @@ module Llm
     private
 
     def anthropic
-      @anthropic ||= Anthropic::Client.new(
-        api_key: Rails.application.credentials.dig(:anthropic, :api_key) || ENV.fetch("ANTHROPIC_API_KEY", nil)
-      )
+      @anthropic ||= begin
+        key = Rails.application.credentials.dig(:anthropic, :api_key) || ENV.fetch("ANTHROPIC_API_KEY", nil)
+        # Fail fast (-> heuristic fallback) instead of making a doomed 401 round trip.
+        raise Error, "Anthropic API key is not configured" if key.blank?
+
+        Anthropic::Client.new(api_key: key)
+      end
     end
 
     def build_params(tier, system:, messages:, max_tokens:, tools:, schema:)

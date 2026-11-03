@@ -23,6 +23,23 @@ RSpec.describe OpenLibrary::Client do
       .with(headers: { "User-Agent" => "Shelfsight/0.1 (hquynhanh19@gmail.com)" })
   end
 
+  # Real Open Library behaviour: /isbn/{isbn}.json answers 302 -> /books/OL..M.json
+  it "follows same-host redirects (as /isbn/ does in production)" do
+    stub_request(:get, "#{base}/isbn/9780441172719.json")
+      .to_return(status: 302, headers: { "Location" => "/books/OL26242482M.json" })
+    stub_json("/books/OL26242482M.json", { "works" => [ { "key" => "/works/OL893415W" } ], "covers" => [ 9 ] })
+
+    expect(client.edition_by_isbn("9780441172719")).to have_attributes(work_key: "/works/OL893415W", cover_id: 9)
+  end
+
+  it "refuses off-site redirects and redirect loops" do
+    stub_request(:get, "#{base}/isbn/1.json").to_return(status: 302, headers: { "Location" => "https://evil.example/x.json" })
+    expect { client.edition_by_isbn("1") }.to raise_error(described_class::Error, /off-site/)
+
+    stub_request(:get, "#{base}/isbn/2.json").to_return(status: 302, headers: { "Location" => "/isbn/2.json" })
+    expect { client.edition_by_isbn("2") }.to raise_error(described_class::Error, /too many redirects/)
+  end
+
   it "returns nil on 404" do
     stub_request(:get, "#{base}/isbn/000.json").to_return(status: 404, body: "")
     expect(client.edition_by_isbn("000")).to be_nil

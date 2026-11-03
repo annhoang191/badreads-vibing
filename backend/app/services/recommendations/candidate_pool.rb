@@ -36,7 +36,7 @@ module Recommendations
 
       @by_work_key[key] = Candidate.new(
         id: "c#{@seq += 1}", work_key: key, title: raw[:title], author: raw[:author], year: raw[:year],
-        subjects: Subjects::Normalizer.call(subjects: raw[:raw_subjects]), pages: raw[:pages],
+        subjects: Subjects::Normalizer.call(subjects: raw[:raw_subjects], exclude: [ raw[:title] ]), pages: raw[:pages],
         cover_id: raw[:cover_id], ratings_count: raw[:ratings_count],
         liked_author: @profile.top_authors.include?(raw[:author]), pre_score: 0.0
       )
