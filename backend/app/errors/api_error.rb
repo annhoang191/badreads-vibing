@@ -38,4 +38,22 @@ class ApiError < StandardError
       super(message, code: "rate_limited", status: :too_many_requests, **opts)
     end
   end
+
+  class Conflict < ApiError
+    def initialize(message = "Conflict", code: "conflict", **opts)
+      super(message, code: code, status: :conflict, **opts)
+    end
+  end
+
+  class InvalidFile < ApiError
+    def initialize(message = "The uploaded file is not a valid CSV", **opts)
+      super(message, code: "invalid_file", status: :unprocessable_content, **opts)
+    end
+  end
+
+  class InvalidGoodreadsExport < ApiError
+    def initialize(message = "The file is not a Goodreads export", **opts)
+      super(message, code: "invalid_goodreads_export", status: :unprocessable_content, **opts)
+    end
+  end
 end

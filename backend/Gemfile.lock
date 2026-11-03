@@ -91,6 +91,7 @@ GEM
       bigdecimal
       rexml
     crass (1.0.8)
+    csv (3.3.7)
     date (3.6.0)
     debug (1.11.1)
       irb (~> 1.10)
@@ -347,6 +348,7 @@ DEPENDENCIES
   bcrypt (~> 3.1.7)
   bootsnap
   brakeman
+  csv
   debug
   factory_bot_rails
   faker

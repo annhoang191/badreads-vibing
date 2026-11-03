@@ -21,8 +21,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_03_110523) do
     t.bigint "record_id", null: false
     t.bigint "blob_id", null: false
     t.datetime "created_at", null: false
-    t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
-    t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
+    t.index [ "blob_id" ], name: "index_active_storage_attachments_on_blob_id"
+    t.index [ "record_type", "record_id", "name", "blob_id" ], name: "index_active_storage_attachments_uniqueness", unique: true
   end
 
   create_table "active_storage_blobs", force: :cascade do |t|
@@ -34,13 +34,13 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_03_110523) do
     t.bigint "byte_size", null: false
     t.string "checksum"
     t.datetime "created_at", null: false
-    t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
+    t.index [ "key" ], name: "index_active_storage_blobs_on_key", unique: true
   end
 
   create_table "active_storage_variant_records", force: :cascade do |t|
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
-    t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+    t.index [ "blob_id", "variation_digest" ], name: "index_active_storage_variant_records_uniqueness", unique: true
   end
 
   create_table "books", force: :cascade do |t|
@@ -62,9 +62,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_03_110523) do
     t.datetime "enriched_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["goodreads_book_id"], name: "index_books_on_goodreads_book_id", unique: true, where: "(goodreads_book_id IS NOT NULL)"
-    t.index ["isbn13"], name: "index_books_on_isbn13"
-    t.index ["open_library_work_key"], name: "index_books_on_open_library_work_key", unique: true, where: "(open_library_work_key IS NOT NULL)"
+    t.index [ "goodreads_book_id" ], name: "index_books_on_goodreads_book_id", unique: true, where: "(goodreads_book_id IS NOT NULL)"
+    t.index [ "isbn13" ], name: "index_books_on_isbn13"
+    t.index [ "open_library_work_key" ], name: "index_books_on_open_library_work_key", unique: true, where: "(open_library_work_key IS NOT NULL)"
   end
 
   create_table "goodreads_profiles", force: :cascade do |t|
@@ -76,7 +76,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_03_110523) do
     t.text "last_error"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["user_id"], name: "index_goodreads_profiles_on_user_id", unique: true
+    t.index [ "user_id" ], name: "index_goodreads_profiles_on_user_id", unique: true
   end
 
   create_table "imports", force: :cascade do |t|
@@ -90,7 +90,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_03_110523) do
     t.datetime "finished_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["user_id", "created_at"], name: "index_imports_on_user_id_and_created_at"
+    t.index [ "user_id", "created_at" ], name: "index_imports_on_user_id_and_created_at"
   end
 
   create_table "llm_calls", force: :cascade do |t|
@@ -108,8 +108,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_03_110523) do
     t.text "error"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["recommendation_batch_id"], name: "index_llm_calls_on_recommendation_batch_id"
-    t.index ["task", "created_at"], name: "index_llm_calls_on_task_and_created_at"
+    t.index [ "recommendation_batch_id" ], name: "index_llm_calls_on_recommendation_batch_id"
+    t.index [ "task", "created_at" ], name: "index_llm_calls_on_task_and_created_at"
   end
 
   create_table "reading_insights", force: :cascade do |t|
@@ -119,7 +119,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_03_110523) do
     t.datetime "computed_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["user_id"], name: "index_reading_insights_on_user_id", unique: true
+    t.index [ "user_id" ], name: "index_reading_insights_on_user_id", unique: true
   end
 
   create_table "recommendation_batches", force: :cascade do |t|
@@ -133,7 +133,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_03_110523) do
     t.text "error_message"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["user_id", "created_at"], name: "index_recommendation_batches_on_user_id_and_created_at"
+    t.index [ "user_id", "created_at" ], name: "index_recommendation_batches_on_user_id_and_created_at"
   end
 
   create_table "recommendations", force: :cascade do |t|
@@ -146,9 +146,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_03_110523) do
     t.string "status", default: "new", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["book_id"], name: "index_recommendations_on_book_id"
-    t.index ["recommendation_batch_id", "book_id"], name: "index_recommendations_on_recommendation_batch_id_and_book_id", unique: true
-    t.index ["user_id", "status"], name: "index_recommendations_on_user_id_and_status"
+    t.index [ "book_id" ], name: "index_recommendations_on_book_id"
+    t.index [ "recommendation_batch_id", "book_id" ], name: "index_recommendations_on_recommendation_batch_id_and_book_id", unique: true
+    t.index [ "user_id", "status" ], name: "index_recommendations_on_user_id_and_status"
     t.check_constraint "\"position\" >= 1 AND \"position\" <= 10", name: "recommendations_position_range"
   end
 
@@ -160,8 +160,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_03_110523) do
     t.datetime "last_used_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["token"], name: "index_sessions_on_token", unique: true
-    t.index ["user_id"], name: "index_sessions_on_user_id"
+    t.index [ "token" ], name: "index_sessions_on_token", unique: true
+    t.index [ "user_id" ], name: "index_sessions_on_user_id"
   end
 
   create_table "subject_mappings", force: :cascade do |t|
@@ -170,7 +170,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_03_110523) do
     t.string "source", default: "config", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["raw_subject"], name: "index_subject_mappings_on_raw_subject", unique: true
+    t.index [ "raw_subject" ], name: "index_subject_mappings_on_raw_subject", unique: true
   end
 
   create_table "user_books", force: :cascade do |t|
@@ -185,9 +185,9 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_03_110523) do
     t.text "review"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["book_id"], name: "index_user_books_on_book_id"
-    t.index ["user_id", "book_id"], name: "index_user_books_on_user_id_and_book_id", unique: true
-    t.index ["user_id", "exclusive_shelf"], name: "index_user_books_on_user_id_and_exclusive_shelf"
+    t.index [ "book_id" ], name: "index_user_books_on_book_id"
+    t.index [ "user_id", "book_id" ], name: "index_user_books_on_user_id_and_book_id", unique: true
+    t.index [ "user_id", "exclusive_shelf" ], name: "index_user_books_on_user_id_and_exclusive_shelf"
     t.check_constraint "my_rating IS NULL OR my_rating >= 1 AND my_rating <= 5", name: "user_books_my_rating_range"
   end
 
@@ -196,7 +196,7 @@ ActiveRecord::Schema[8.0].define(version: 2026_11_03_110523) do
     t.string "password_digest", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["email_address"], name: "index_users_on_email_address", unique: true
+    t.index [ "email_address" ], name: "index_users_on_email_address", unique: true
   end
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"

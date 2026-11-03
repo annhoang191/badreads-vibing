@@ -8,6 +8,8 @@ Rails.application.routes.draw do
       resources :registrations, only: :create
       resource :session, only: %i[create destroy]
       resource :me, only: :show, controller: "me"
+      resources :imports, only: %i[index show create]
+      resources :books, only: :index
     end
   end
 end

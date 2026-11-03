@@ -59,3 +59,6 @@ end
 # json 3.x removed `quirks_mode`, which ActiveSupport 8.0's JSON encoder still passes.
 # Remove this pin once Rails supports json 3.
 gem "json", "~> 2.10"
+
+# Bundled (not default) gem since Ruby 3.4; used to parse Goodreads exports.
+gem "csv"
