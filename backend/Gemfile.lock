@@ -74,7 +74,7 @@ GEM
       uri (>= 0.13.1)
     addressable (2.9.2)
       public_suffix (>= 2.0.2, < 8.0)
-    alba (4.0.2)
+    alba (4.0.3)
     anthropic (2.4.0)
       base64 (~> 0.1)
       connection_pool (>= 2, < 4)
